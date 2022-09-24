@@ -3,6 +3,7 @@ import windows from "./windows/index";
 export {linux, windows};
 
 if (process.argv[2] === "DEBUG") {
-  if (process.platform === "win32") await windows();
+  process.env.DEBUG = "1";
+  if (process.platform === "win32") windows();
   else linux();
 }

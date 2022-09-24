@@ -1,10 +1,10 @@
 import { tmpdir } from "node:os";
-import { promisify } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
-import got from "got";
 import tar from "tar";
 import admZip from "adm-zip";
+
+const gotCjs = async () => (await (eval('import("got")') as Promise<typeof import("got")>)).default;
 
 export async function saveFile(url: string, options?: {filePath?: string, headers?: {[key: string]: string|number}}) {
   let fileSave = path.join(tmpdir(), (Math.random()*155515151).toFixed()+"_raw_node_"+path.basename(url));
@@ -14,24 +14,39 @@ export async function saveFile(url: string, options?: {filePath?: string, header
     if (options.headers) Object.keys(options.headers).forEach(key => Headers[key] = String(options.headers[key]));
   }
 
-  const gotStream = got.stream({url, headers: Headers, isStream: true});
-  gotStream.pipe(fs.createWriteStream(fileSave, {autoClose: false}));
+  const gotStream = (await gotCjs()).stream({url, headers: Headers, isStream: true});
+  const fileStream = fs.createWriteStream(fileSave, {autoClose: false});
+  gotStream.pipe(fileStream);
   await new Promise<void>((done, reject) => {
-    gotStream.on("end", () => setTimeout(done, 1000));
+    fileStream.on("error", reject);
     gotStream.on("error", reject);
+    gotStream.on("end", () => fileStream.once("finish", done));
   });
   return fileSave;
 }
 
-const isGithubRoot = /github.com\/[\S\w]+\/[\S\w]+\/archive/;
+const isGithubRoot = /github.com\/[\S\w]+\/[\S\w]+\/archive\//;
 export async function extractZip(url: string, folderTarget: string) {
+  const downloadedFile = await saveFile(url);
+  const extract = async (targetFolder: string) => {
+    const zip = new admZip(downloadedFile);
+    await new Promise<void>((done, reject) => {
+      zip.extractAllToAsync(targetFolder, true, true, (err) => {
+        if (err) return done();
+        return reject(err);
+      })
+    });
+  }
   if (isGithubRoot.test(url)) {
-    const tempFolder = await fs.promises.mkdtemp(path.join(tmpdir(), "githubRoot-------"), "utf8");
-    promisify((new admZip()).extractAllToAsync)(tempFolder, true, true);
-    await fs.promises.cp(path.join(tempFolder, (await fs.promises.readdir(tempFolder))[0]), folderTarget, {recursive: true, force: true, preserveTimestamps: true, verbatimSymlinks: true});
+    const tempFolder = await fs.promises.mkdtemp(path.join(tmpdir(), "githubRoot_"), "utf8");
+    await extract(tempFolder);
+    const files = await fs.promises.readdir(tempFolder);
+    if (files.length === 0) throw new Error("Invalid extract");
+    console.log("%s -> %s", path.join(tempFolder, files[0]), folderTarget)
+    await fs.promises.cp(path.join(tempFolder, files[0]), folderTarget, {recursive: true, force: true, preserveTimestamps: true, verbatimSymlinks: true});
     return await fs.promises.rm(tempFolder, {recursive: true, force: true});
   }
-  return promisify((new admZip()).extractAllToAsync)(folderTarget, true, true);
+  return extract(folderTarget);
 }
 
 export async function downloadGithubZip(org: string, repo: string, target: string) {
@@ -48,7 +63,7 @@ export async function tarExtract(url: string, options?: {folderPath?: string, he
   }
 
   if (!fs.existsSync(fileSave)) await fs.promises.mkdir(fileSave, {recursive: true});
-  const gotStream = got.stream({url, headers: Headers, isStream: true});
+  const gotStream = (await gotCjs()).stream({url, headers: Headers, isStream: true});
   const tarE = tar.extract({
     cwd: fileSave,
     noChmod: false,
@@ -73,7 +88,7 @@ export async function getBuffer(url: string, options?: {method?: string,body?: a
     if (options.body) Body = options.body;
   }
   // if (typeof fetch === "undefined")
-  return got(url, {
+  return (await gotCjs())(url, {
     headers: Headers,
     responseType: "buffer",
     body: Body,

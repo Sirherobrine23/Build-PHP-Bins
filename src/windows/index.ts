@@ -13,16 +13,16 @@ export type phpBuildOptions = {
 };
 
 export default async function buildPhp(options?: phpBuildOptions) {
-  const buildFolder = options?.buildFolder||path.join(process.cwd(), "phpBuild");
+  const buildFolder = options?.buildFolder||path.join(process.cwd(), "php_build");
   if (fs.existsSync(buildFolder)) await fs.promises.rm(buildFolder, {recursive: true, force: true});
+  await fs.promises.mkdir(buildFolder, {recursive: true});
   console.log("Build in '%s' folder", buildFolder);
 
   // Checking vscode version and edtion
-  const VS_EDITION: VSEditions = (process.env.VS_EDITION as VSEditions)||"Community";
-  const VS_VER = process.env.VS_VER||"2019";
+  const VS_EDITION: VSEditions = process.env.VS_EDITION as VSEditions;
+  const VS_VER = process.env.VS_VER||"2022";
   const VSEditions = await checkVs(VS_VER);
-  if (!VSEditions) throw new Error("Install Visual Studio code 2019 or High");
-  if (!VSEditions.includes(VS_EDITION)) throw new Error("Vs Studio detect fail");
+  if (!VSEditions) throw new Error("Install Visual Studio code 2019 or High¹");
   await vcvarsallBat(VS_VER, {Edition: VS_EDITION, argsToScript: [process.arch], cwd: buildFolder});
 
   // Delete bin folder if exists
@@ -43,7 +43,7 @@ export default async function buildPhp(options?: phpBuildOptions) {
   // PHP Souce
   const PHP_MAJOR_VER = options?.phpMajorVer||"8.0";
   const PHP_VER = options?.phpMajorVer||PHP_MAJOR_VER+".22";
-  console.log("Downloading PHP source version %s...", );
+  console.log("Downloading PHP source version %s...", PHP_MAJOR_VER);
   await php.phpSrc({
     buildFolder,
     phpGetRev: `php-${PHP_VER}`
@@ -52,10 +52,11 @@ export default async function buildPhp(options?: phpBuildOptions) {
   // Dependecie
   const DEPS_DIR_NAME = "deps";
   const DEPS_DIR = path.join(buildFolder, DEPS_DIR_NAME);
+  await fs.promises.mkdir(DEPS_DIR, {recursive: true});
   console.log("Downloading PHP dependencies into %s...", DEPS_DIR);
   await php.phpsdk_deps({
     buildFolder,
-    VC_VER: "",
+    VC_VER: "vs16",
     DEPS_DIR_NAME,
     PHP_MAJOR_VER
   });

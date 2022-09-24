@@ -3,13 +3,12 @@ import fs from "node:fs/promises";
 import fsOld from "node:fs";
 import { execFileAsync } from "../childPromisses";
 export type VSEditions = "Community"|"Enterprise"|"Professional";
-// C:\\Program Files\\Microsoft Visual Studio
-export const VSFolder = process.env.VS_FOLDER||"C:\\Program Files\\Microsoft Visual Studio";
+export const VSFolder = process.env.VS_FOLDER||path.resolve("C:\\", "Program Files", "Microsoft Visual Studio");
 
 export default async function checkVs(year: string): Promise<false|VSEditions[]> {
-  const yearVs = path.join(VSFolder, year);
   if (!fsOld.existsSync(VSFolder)) return false;
-  else if (fsOld.existsSync(yearVs)) return (await fs.readdir(yearVs)).filter(file => file === "Community"||file === "Enterprise"||file === "Professional") as VSEditions[];
+  const yearVs = path.join(VSFolder, year);
+  if (fsOld.existsSync(yearVs)) return (await fs.readdir(yearVs)).filter(file => file === "Community"||file === "Enterprise"||file === "Professional") as VSEditions[];
   return false;
 }
 
@@ -22,7 +21,8 @@ export async function vcvarsallBat(year: string, options?: {Edition?: VSEditions
     else if (vsfolder.includes("Professional")) options.Edition = "Enterprise";
     else options.Edition = "Community";
   }
-  const scriptFile = path.join(VSFolder, year, options.Edition, "VC\\Auxiliary\\Build\\vcvarsall.bat");
+  const scriptFile = path.join(VSFolder, year, options.Edition, "VC", "Auxiliary", "Build", "vcvarsall.bat");
+  if (options.cwd && !fsOld.existsSync(options.cwd)) await fs.mkdir(options.cwd, {recursive: true});
   return execFileAsync(scriptFile, [...(options.argsToScript||[])], {
     stdio: (process.env.DEBUG==="1"||process.env.DEBUG==="true")?"inherit":"ignore",
     cwd: options.cwd,

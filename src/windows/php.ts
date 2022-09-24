@@ -1,7 +1,7 @@
+import path from "path/win32";
 import { clone as gitClone } from "../git";
 import { execFileAsync } from "../childPromisses";
 import { extractZip } from "../http_request";
-import path from "path/win32";
 
 type buildBase = {
   buildFolder: string,
