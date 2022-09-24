@@ -1,0 +1,19 @@
+{
+  "name": "pocketmine_php_build",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "license": "MIT",
+  "homepage": "https://github.com/The-Bds-Maneger/Build-PHP-Bins#readme",
+  "author": "Matheus Sampaio Queiroga <srherobrine20@gmail.com> (https://sirherobrine23.org/)",
+  "scripts": {
+    "test": "node ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/The-Bds-Maneger/Build-PHP-Bins.git"
+  },
+  "bugs": {
+    "url": "https://github.com/The-Bds-Maneger/Build-PHP-Bins/issues"
+  }
+}
